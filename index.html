@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EMP / CMF Finance</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root{--green:#16b85c;--bg:#f1f1f3;--red:#e74c3c;--blue:#1da1f2;--orange:#f39c12}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",Arial,sans-serif;background:var(--bg);color:#111}
+.top{position:sticky;top:0;z-index:10;background:#f7f7fa;padding:12px 10px;border-bottom:1px solid #ddd}
+.tabs{display:flex;gap:8px;overflow-x:auto;align-items:center}
+.tab{border:0;background:transparent;color:#777;font-size:17px;padding:10px 18px;border-radius:22px;white-space:nowrap}
+.tab.active{background:var(--green);color:#fff;font-weight:700}.plus{font-size:28px;color:#777;padding:0 10px}
+.page{display:none;padding:18px 14px 90px;max-width:1150px;margin:auto}.page.active{display:block}
+.card{background:#fff;border-radius:14px;box-shadow:0 2px 8px #0002;padding:14px;margin:12px 0}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px}
+.box{text-align:center;background:#fff;border-radius:12px;box-shadow:0 2px 8px #0002;padding:12px}.money{font-size:18px;font-weight:700}
+.red{color:var(--red)}.green{color:var(--green)}.blue{color:var(--blue)}.orange{color:var(--orange)}
+.small{font-size:12px;color:#555}h3{font-size:15px;margin:20px 0 8px;border-left:3px solid #111;padding-left:7px}
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(82px,1fr));gap:10px;text-align:center}.emoji{font-size:21px}.cat-amount{font-size:13px;margin:6px 0}.chart-wrap{height:260px}
+input,select{width:100%;padding:12px;border:1px solid #ddd;border-radius:12px;font-size:16px;background:#f8f8fb}label{font-size:13px;color:#555;margin-top:8px;display:block}.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+button{border:0;border-radius:12px;padding:12px 16px;font-size:16px;background:var(--green);color:#fff;font-weight:700}button.gray{background:#888}button.redbtn{background:#e74c3c}button.bluebtn{background:#1da1f2}button.orangebtn{background:#f39c12}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:13px}th,td{border:1px solid #ddd;padding:8px;text-align:center}th{background:#f0f0f0}.action button{font-size:12px;padding:6px 8px;margin:2px}
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:#ccc;border:1px solid #ccc}.day{background:#fff;min-height:78px;padding:5px;font-size:11px}.day .date{background:#2eb8ef;color:#fff;text-align:center;padding:3px;margin:-5px -5px 4px}
+.tag{display:inline-flex;align-items:center;gap:6px;background:#f4f4f4;border:1px solid #ddd;border-radius:999px;padding:7px 10px;margin:4px}.tag button{padding:2px 7px;font-size:12px;border-radius:99px;background:#e74c3c}
+.notice{background:#fff8e5;border-left:4px solid var(--orange);padding:10px;border-radius:10px;margin:10px 0}
+@media(max-width:650px){.chart-wrap{height:220px}.day{min-height:66px;font-size:10px}}
+
+.login-screen{
+  position:fixed;inset:0;z-index:9999;background:#f1f1f3;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.login-card{
+  width:100%;max-width:380px;background:#fff;border-radius:18px;
+  box-shadow:0 4px 20px #0002;padding:24px;text-align:center;
+}
+.login-card h2{margin:0 0 10px}
+.login-card input{margin:12px 0}
+.login-error{color:#e74c3c;font-size:14px;min-height:20px}
+
+.bank-legacy{display:none!important}
+.bank-legacy{display:none!important}
+</style></head>
+<body>
+
+<div id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <h2>EMP / CMF Finance</h2>
+    <p class="small">请输入管理员密码进入系统</p>
+    <input type="password" id="passwordInput" placeholder="Password" onkeydown="if(event.key==='Enter') checkPassword()">
+    <button onclick="checkPassword()">进入系统</button>
+    <div id="loginError" class="login-error"></div>
+  </div>
+</div>
+
+<div class="top"><div class="tabs">
+<span class="plus" onclick="showPage('form')">＋</span>
+<button class="tab active" onclick="showPage('year')">年度记账本</button>
+<button class="tab" onclick="showPage('month')">月度记账本</button>
+<button class="tab" onclick="showPage('stats')">统计表</button>
+<button class="tab" onclick="showPage('flow')">交易流水</button>
+<button class="tab" onclick="showPage('form')">交易表单</button>
+<button class="tab" onclick="showPage('cats')">分类管理</button>
+<button class="tab" onclick="showPage('settings')">备份/优化</button>
+</div></div>
+
+<section id="year" class="page active">
+<div class="summary">
+<div class="box"><div id="yearLabel" class="money"></div><div class="small">年份</div></div>
+<div class="box"><div id="yearIncome" class="money green"></div><div class="small">本年总收入</div></div>
+<div class="box"><div id="yearCashIncome" class="money green"></div><div class="small">现金收入</div></div>
+<div class="box"><div id="yearTransferIncome" class="money blue"></div><div class="small">汇款收入</div></div><div class="box bank-legacy"><div id="yearBankIncome" class="money"></div><div class="small">汇款收入</div></div>
+<div class="box"><div id="yearExpense" class="money red"></div><div class="small">总支出</div></div>
+<div class="box"><div id="yearCashBalance" class="money"></div><div class="small">现金剩余</div></div>
+<div class="box"><div id="yearTransferBalance" class="money"></div><div class="small">汇款剩余</div></div>
+<div class="box bank-legacy"><div id="yearCardBalance" class="money"></div><div class="small">汇款剩余</div></div>
+<div class="box"><div id="yearLeft" class="money"></div><div class="small">总余额 / 剩下多少钱</div></div>
+<div class="box"><div id="yearNet" class="money"></div><div class="small">净利润 / 赚了多少</div></div>
+<div class="box"><div id="yearMargin" class="money orange"></div><div class="small">利润率</div></div>
+<div class="box"><div id="count" class="money"></div><div class="small">已记账 / 笔</div></div>
+</div>
+<h3>智能提醒</h3><div class="card" id="insights"></div>
+<h3>支出分类汇总</h3><div class="card cat-grid" id="yearExpenseCats"></div>
+<h3>收入分类汇总</h3><div class="card cat-grid" id="yearIncomeCats"></div>
+<h3>收支分类占比</h3><div class="card row"><div class="chart-wrap" style="flex:1;min-width:260px"><canvas id="expensePie"></canvas></div><div class="chart-wrap" style="flex:1;min-width:260px"><canvas id="incomePie"></canvas></div></div>
+<h3>月度账单汇总</h3>
+<div class="card" style="overflow:auto">
+  <table id="monthlyTable"></table>
+</div>
+
+<h3>收入支出趋势</h3>
+<div class="card">
+  <div class="chart-wrap">
+    <canvas id="monthlyLine"></canvas>
+  </div>
+</div>
+</section>
+
+<section id="month" class="page">
+<div class="card row">
+<select id="monthSelect" onchange="renderAll()" style="max-width:180px"></select>
+<div><b id="mIncome" class="green">€0.00</b><div class="small">月总收入</div></div>
+<div><b id="mCashIncome" class="green">€0.00</b><div class="small">现金收入</div></div>
+<div><b id="mTransferIncome" class="blue">€0.00</b><div class="small">汇款收入</div></div><div class="bank-legacy"><b id="mBankIncome">€0.00</b><div class="small">汇款收入</div></div>
+<div><b id="mExpense" class="red">€0.00</b><div class="small">支出</div></div>
+<div><b id="mCashBalance">€0.00</b><div class="small">现金剩余</div></div>
+<div><b id="mTransferBalance">€0.00</b><div class="small">汇款剩余</div></div>
+<div class="bank-legacy"><b id="mCardBalance">€0.00</b><div class="small">汇款剩余</div></div>
+<div><b id="mLeft">€0.00</b><div class="small">总余额 / 剩下多少钱</div></div>
+<div><b id="mNet">€0.00</b><div class="small">净利润</div></div>
+<div><b id="mMargin" class="orange">0%</b><div class="small">利润率</div></div>
+</div>
+<h3>支出分类汇总</h3><div class="card row"><div id="monthExpenseList" style="flex:1"></div><div class="chart-wrap" style="flex:2;min-width:260px"><canvas id="monthBar"></canvas></div></div>
+<h3>收入分类汇总</h3><div class="card row"><div class="chart-wrap" style="flex:1;min-width:260px"><canvas id="monthIncomePie"></canvas></div><div id="monthIncomeList" style="flex:1"></div></div>
+<h3>收支日历视图</h3><div class="card"><div class="calendar" id="calendar"></div></div>
+</section>
+
+<section id="stats" class="page">
+<h3>计算逻辑说明</h3>
+<div class="card">
+<p><b>净利润 / 赚了多少 = 总收入 - 总支出。</b></p>
+<p><b>现金剩余 = 现金收入 - 现金支出；汇款剩余 = 汇款收入 - 汇款支出。</b></p>
+<p>所以你录入支出时，选择「账户=现金」，这笔钱就从现金里扣；选择「账户=汇款」，就从汇款里扣。</p>
+</div>
+<h3>日 / 月 / 年统计表</h3>
+<div class="card form-grid">
+<div><label>选择日期</label><input type="date" id="statsDate" onchange="renderStats()"></div>
+<div><label>选择月份</label><input type="month" id="statsMonth" onchange="renderStats()"></div>
+<div><label>选择年份</label><input type="number" id="statsYear" onchange="renderStats()" placeholder="2026"></div>
+</div>
+<h3>日统计</h3><div class="summary"><div class="box"><div id="dayLeft" class="money"></div><div class="small">今日总余额</div></div><div class="box"><div id="dayCashBalance" class="money"></div><div class="small">现金剩余</div></div><div class="box"><div id="dayTransferBalance" class="money"></div><div class="small">汇款剩余</div></div><div class="box bank-legacy"><div id="dayCardBalance" class="money"></div><div class="small">汇款剩余</div></div><div class="box"><div id="dayProfit" class="money"></div><div class="small">今日净利润</div></div><div class="box"><div id="dayMargin" class="money orange"></div><div class="small">今日利润率</div></div><div class="box"><div id="dayCashTransfer" class="money"></div><div class="small">现金+汇款收入</div></div></div><div class="card" style="overflow:auto"><table id="dayStatsTable"></table></div>
+<h3>月统计</h3><div class="summary"><div class="box"><div id="monthLeft2" class="money"></div><div class="small">本月总余额</div></div><div class="box"><div id="monthCashBalance2" class="money"></div><div class="small">现金剩余</div></div><div class="box"><div id="monthTransferBalance2" class="money"></div><div class="small">汇款剩余</div></div><div class="box bank-legacy"><div id="monthCardBalance2" class="money"></div><div class="small">汇款剩余</div></div><div class="box"><div id="monthProfit2" class="money"></div><div class="small">本月净利润</div></div><div class="box"><div id="monthMargin2" class="money orange"></div><div class="small">本月利润率</div></div><div class="box"><div id="monthCashTransfer" class="money"></div><div class="small">现金+汇款收入</div></div></div><div class="card" style="overflow:auto"><table id="monthStatsTable"></table></div>
+<h3>年统计</h3><div class="summary"><div class="box"><div id="yearLeft2" class="money"></div><div class="small">本年总余额</div></div><div class="box"><div id="yearCashBalance2" class="money"></div><div class="small">现金剩余</div></div><div class="box"><div id="yearTransferBalance2" class="money"></div><div class="small">汇款剩余</div></div><div class="box bank-legacy"><div id="yearCardBalance2" class="money"></div><div class="small">汇款剩余</div></div><div class="box"><div id="yearProfit2" class="money"></div><div class="small">本年净利润</div></div><div class="box"><div id="yearMargin2" class="money orange"></div><div class="small">本年利润率</div></div><div class="box"><div id="yearCashTransfer" class="money"></div><div class="small">现金+汇款收入</div></div></div><div class="card" style="overflow:auto"><table id="yearStatsTable"></table></div>
+</section>
+
+<section id="flow" class="page">
+<div class="card form-grid"><input id="search" placeholder="搜索备注/类别/账户" oninput="renderFlow()"><select id="filterType" onchange="renderFlow()"><option value="">全部收支</option><option>收入</option><option>支出</option></select><select id="filterAccount" onchange="renderFlow()"><option value="">全部账户</option><option>现金</option><option>汇款</option><option>其他</option></select><input id="filterMonth" type="month" onchange="renderFlow()"><button onclick="exportCSV()">导出CSV</button></div>
+<div class="card" style="overflow:auto"><table id="flowTable"></table></div>
+</section>
+
+<section id="form" class="page">
+<div class="card"><h2 id="formTitle">新增交易</h2><input type="hidden" id="editId">
+<div class="form-grid">
+<div><label>日期</label><input type="date" id="date"></div>
+<div><label>收支</label><select id="type" onchange="updateCategoryOptions()"><option>支出</option><option>收入</option></select></div>
+<div><label>类别</label><select id="category"></select><div class="small">分类要先在「分类管理」新增。</div></div>
+<div><label>金额 €</label><input type="number" id="amount" step="0.01"></div>
+<div><label>账户</label><select id="account"><option>现金</option><option>汇款</option><option>其他</option></select></div>
+<div><label>备注</label><input id="note" placeholder="例如：KFC / Uber / 进货"></div>
+</div>
+<div class="row" style="margin-top:14px"><button onclick="saveRecord()">保存</button><button class="gray" onclick="resetForm()">清空</button><button class="bluebtn" onclick="showPage('cats')">去加分类</button></div></div>
+</section>
+
+<section id="cats" class="page">
+<h3>分类管理</h3><div class="card"><div class="form-grid"><div><label>分类属于</label><select id="newCatType"><option>支出</option><option>收入</option></select></div><div><label>分类名称</label><input id="newCatName" placeholder="例如：进货 / 工资 / 水电 / 房租"></div><div><label>图标/Emoji 可不填</label><input id="newCatEmoji" placeholder="例如：🛒"></div></div><div class="row" style="margin-top:12px"><button onclick="addCategory()">新增分类</button></div></div>
+<h3>支出分类</h3><div class="card" id="expenseCatTags"></div><h3>收入分类</h3><div class="card" id="incomeCatTags"></div>
+<h3>辅助数据：分类月度汇总</h3><div class="card" style="overflow:auto"><table id="helperTable"></table></div>
+</section>
+
+<section id="settings" class="page">
+<h3>备份 / 优化</h3>
+<div class="notice">数据已保存到 Firebase 云端。电脑、手机、平板会同步同一份账本。建议定期导出备份。</div>
+<div class="card row"><button onclick="backupJSON()">导出完整备份JSON</button><button class="bluebtn" onclick="document.getElementById('importFile').click()">导入备份JSON</button><input id="importFile" type="file" accept=".json" style="display:none" onchange="importJSON(event)"><button class="orangebtn" onclick="exportCSV()">导出流水CSV</button><button class="redbtn" onclick="clearAllData()">清空全部数据</button></div>
+<h3>已加入优化</h3>
+<div class="card">
+<p>✅ 自定义分类：你填什么分类，系统才显示什么分类。</p>
+<p>✅ 日/月/年统计：总收入、现金收入、汇款收入、各账户支出、现金剩余、汇款剩余、总余额、净利润、利润率。</p>
+<p>✅ 账户筛选：现金、汇款、其他。</p>
+<p>✅ 智能提醒：自动提示亏损、无收入、现金/汇款收入占比。</p>
+<p>✅ Firebase 云端同步：电脑和手机共用同一份账本。</p>
+<p>✅ 删除保护：有流水的分类不能直接删除，避免统计错乱。</p>
+</div>
+</section>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
+<script>
+let records=[];
+let categories={收入:[],支出:[]};
+let charts={};
+let cloudReady=false;
+const firebaseConfig = {
+  apiKey: "AIzaSyA5wo62VKzPn0V2H-po-1RSXgqS9FCCEgk",
+  authDomain: "cmfinance26-14668.firebaseapp.com",
+  databaseURL: "https://cmfinance26-14668-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "cmfinance26-14668",
+  storageBucket: "cmfinance26-14668.firebasestorage.app",
+  messagingSenderId: "40879571268",
+  appId: "1:40879571268:web:b7ef0cb0f88d76532f1711",
+  measurementId: "G-6E7SZ8H5M2"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+const dataRef=db.ref('financeData');
+function cleanRecords(list){return (Array.isArray(list)?list:[]).map(r=>({...r,account:normAccount(r.account),amount:Number(r.amount||0)})).filter(r=>r.date&&r.type&&r.category)}
+function cleanCategories(obj){return obj&&typeof obj==='object'?{收入:Array.isArray(obj['收入'])?obj['收入']:[],支出:Array.isArray(obj['支出'])?obj['支出']:[]}:{收入:[],支出:[]}}
+function save(){
+  const payload={records:cleanRecords(records),categories:cleanCategories(categories),updatedAt:new Date().toISOString()};
+  dataRef.set(payload).catch(err=>alert('云端保存失败：'+err.message));
+}
+function initCloud(){
+  dataRef.on('value',snap=>{
+    const data=snap.val();
+    if(data){records=cleanRecords(data.records);categories=cleanCategories(data.categories)}
+    else{
+      try{
+        const oldRecords=JSON.parse(localStorage.getItem('emp_records_custom_v5')||localStorage.getItem('emp_records_custom_v4')||localStorage.getItem('emp_records_custom')||'[]');
+        const oldCategories=JSON.parse(localStorage.getItem('emp_categories_custom_v5')||localStorage.getItem('emp_categories_custom_v4')||localStorage.getItem('emp_categories_custom')||'{"收入":[],"支出":[]}');
+        records=cleanRecords(oldRecords);categories=cleanCategories(oldCategories);
+        if(records.length||categories['收入'].length||categories['支出'].length){save();}
+      }catch(e){records=[];categories={收入:[],支出:[]}}
+    }
+    cloudReady=true;
+    renderAll();
+    updateCategoryOptions();
+  },err=>alert('Firebase 连接失败：'+err.message));
+}
+function euro(n){return '€'+Number(n||0).toFixed(2)} function pct(n){return isFinite(n)?(n*100).toFixed(1)+'%':'0%'} function today(){return new Date().toISOString().slice(0,10)} function ym(d){return d.slice(0,7)} function normAccount(a){return a==='银行卡'||a==='银行'?'汇款':a} function cats(t){return categories[t]||[]}
+function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));[...document.querySelectorAll('.tab')].find(t=>t.textContent.includes({year:'年度',month:'月度',stats:'统计表',flow:'交易流水',form:'交易表单',cats:'分类管理',settings:'备份'}[id]))?.classList.add('active');if(id==='form') resetForm();renderAll()}
+function updateCategoryOptions(){let list=cats(type.value);category.innerHTML=list.length?list.map(c=>`<option>${c.name}</option>`).join(''):'<option value="">请先新增分类</option>'}
+function addCategory(){let t=newCatType.value,n=newCatName.value.trim(),e=newCatEmoji.value.trim()||'📌';if(!n){alert('请输入分类名称');return}if(cats(t).some(c=>c.name===n)){alert('这个分类已经存在');return}categories[t].push({name:n,emoji:e});newCatName.value='';newCatEmoji.value='';save();renderAll();updateCategoryOptions()}
+function deleteCategory(t,n){if(records.some(r=>r.type===t&&r.category===n)){alert('这个分类已有交易记录，不能直接删除。先修改/删除相关流水。');return}if(confirm('删除分类：'+n+'？')){categories[t]=categories[t].filter(c=>c.name!==n);save();renderAll();updateCategoryOptions()}}
+function renderCategoryTags(){expenseCatTags.innerHTML=cats('支出').length?cats('支出').map(c=>`<span class="tag">${c.emoji} ${c.name}<button onclick="deleteCategory('支出','${c.name}')">×</button></span>`).join(''):'<span class="small">还没有支出分类。</span>';incomeCatTags.innerHTML=cats('收入').length?cats('收入').map(c=>`<span class="tag">${c.emoji} ${c.name}<button onclick="deleteCategory('收入','${c.name}')">×</button></span>`).join(''):'<span class="small">还没有收入分类。</span>'}
+function saveRecord(){const id=editId.value;if(!category.value){alert('请先去「分类管理」新增分类');return}const r={id:id||Date.now().toString(),date:date.value||today(),type:type.value,category:category.value,amount:parseFloat(amount.value||0),account:normAccount(account.value),note:note.value.trim()};if(!r.amount){alert('请输入金额');return}if(id)records=records.map(x=>x.id===id?r:x);else records.push(r);save();resetForm();showPage('flow')}
+function resetForm(){formTitle.textContent='新增交易';editId.value='';date.value=today();type.value='支出';updateCategoryOptions();amount.value='';account.value='汇款';note.value=''}
+function editRecord(id){let r=records.find(x=>x.id===id);if(!r)return;showPage('form');formTitle.textContent='修改交易';editId.value=r.id;date.value=r.date;type.value=r.type;updateCategoryOptions();category.value=r.category;amount.value=r.amount;account.value=normAccount(r.account);note.value=r.note}
+function delRecord(id){if(confirm('确定删除这笔记录吗？')){records=records.filter(x=>x.id!==id);save();renderAll()}}
+function sums(list){let inc=0,exp=0;list.forEach(r=>r.type==='收入'?inc+=r.amount:exp+=r.amount);return{inc,exp,net:inc-exp}}
+function incomeByAccount(list,account){return list.filter(r=>r.type==='收入'&&normAccount(r.account)===account).reduce((a,b)=>a+b.amount,0)}
+function expenseByAccount(list,account){return list.filter(r=>r.type==='支出'&&normAccount(r.account)===account).reduce((a,b)=>a+b.amount,0)}
+function statObj(list){let s=sums(list);let cashIncome=incomeByAccount(list,'现金'),transferIncome=incomeByAccount(list,'汇款'),cardIncome=0,otherIncome=incomeByAccount(list,'其他'),cashExpense=expenseByAccount(list,'现金'),transferExpense=expenseByAccount(list,'汇款'),cardExpense=0,otherExpense=expenseByAccount(list,'其他');return{totalIncome:s.inc,totalExpense:s.exp,net:s.net,left:s.net,margin:s.inc?s.net/s.inc:0,cashIncome,transferIncome,cardIncome,otherIncome,cashExpense,transferExpense,cardExpense,otherExpense,cashLeft:cashIncome-cashExpense,transferLeft:transferIncome-transferExpense,cardLeft:cardIncome-cardExpense,otherLeft:otherIncome-otherExpense}}
+function statTable(o,title){return `<tr><th colspan="2">${title}</th></tr>
+<tr><td>总收入</td><td class="green">${euro(o.totalIncome)}</td></tr>
+<tr><td>现金收入</td><td class="green">${euro(o.cashIncome)}</td></tr>
+<tr><td>汇款收入</td><td class="blue">${euro(o.transferIncome)}</td></tr>
+<tr><td>其他收入</td><td>${euro(o.otherIncome)}</td></tr>
+<tr><td>总支出</td><td class="red">${euro(o.totalExpense)}</td></tr>
+<tr><td>现金支出</td><td class="red">${euro(o.cashExpense)}</td></tr>
+<tr><td>汇款支出</td><td class="red">${euro(o.transferExpense)}</td></tr>
+<tr><td>其他支出</td><td class="red">${euro(o.otherExpense)}</td></tr>
+<tr><td><b>现金剩余</b></td><td><b>${euro(o.cashLeft)}</b></td></tr>
+<tr><td><b>汇款剩余</b></td><td><b>${euro(o.transferLeft)}</b></td></tr>
+<tr><td><b>其他剩余</b></td><td><b>${euro(o.otherLeft)}</b></td></tr>
+<tr><td><b>总余额 / 剩下多少钱</b></td><td><b>${euro(o.left)}</b></td></tr>
+<tr><td><b>净利润 / 赚了多少</b></td><td><b>${euro(o.net)}</b></td></tr>
+<tr><td><b>利润率</b></td><td><b>${pct(o.margin)}</b></td></tr>`}
+function byCat(list,t){let m={};cats(t).forEach(c=>m[c.name]=0);list.filter(r=>r.type===t).forEach(r=>m[r.category]=(m[r.category]||0)+r.amount);return m}
+function catHtml(m,t){let list=cats(t);return list.length?list.map(c=>`<div><div class="emoji">${c.emoji}</div><div class="cat-amount ${t==='支出'?'red':'green'}">${euro(m[c.name]||0)}</div><div class="small">${c.name}</div></div>`).join(''):'<div class="small">还没有分类</div>'}
+function chart(id,type,data,opts={}){if(charts[id])charts[id].destroy();charts[id]=new Chart(document.getElementById(id),{type,data,options:{responsive:true,maintainAspectRatio:false,...opts}})}
+function renderMonthSelect(){let cur=today().slice(0,7),set=new Set([cur,...records.map(r=>ym(r.date))]),old=monthSelect.value||cur;monthSelect.innerHTML=[...set].sort().reverse().map(m=>`<option value="${m}">${m.replace('-',' 年 ')} 月</option>`).join('');monthSelect.value=set.has(old)?old:cur}
+function renderInsights(y,list,o){let arr=[];if(!records.length)arr.push('还没有记账。先去「分类管理」新增分类，再去「交易表单」添加流水。');if(o.totalIncome===0&&o.totalExpense>0)arr.push('本年有支出但没有收入记录，记得录入现金/汇款收入。');if(o.net<0)arr.push('当前是亏损状态：支出大于收入。');if(o.totalIncome>0){arr.push('现金收入占比：'+pct(o.cashIncome/o.totalIncome)+'；汇款收入占比：'+pct(o.transferIncome/o.totalIncome)+'。');}insights.innerHTML=arr.map(x=>`<p>• ${x}</p>`).join('')||'<p>目前数据正常。</p>'}
+function renderYear(){let y=(monthSelect.value||today().slice(0,7)).slice(0,4),list=records.filter(r=>r.date.startsWith(y)),s=sums(list),o=statObj(list);yearLabel.textContent=y;yearIncome.textContent=euro(s.inc);yearCashIncome.textContent=euro(o.cashIncome);yearTransferIncome.textContent=euro(o.transferIncome);yearBankIncome.textContent=euro(o.cardIncome);yearExpense.textContent=euro(s.exp);yearCashBalance.textContent=euro(o.cashLeft);yearTransferBalance.textContent=euro(o.transferLeft);yearCardBalance.textContent=euro(o.cardLeft);yearLeft.textContent=euro(o.left);yearNet.textContent=euro(o.net);yearMargin.textContent=pct(o.margin);yearNet.className='money '+(s.net>=0?'green':'red');yearLeft.className='money '+(s.net>=0?'green':'red');count.textContent=records.length;renderInsights(y,list,o);let em=byCat(list,'支出'),im=byCat(list,'收入');yearExpenseCats.innerHTML=catHtml(em,'支出');yearIncomeCats.innerHTML=catHtml(im,'收入');chart('expensePie','doughnut',{labels:Object.keys(em),datasets:[{data:Object.values(em)}]});chart('incomePie','doughnut',{labels:Object.keys(im),datasets:[{data:Object.values(im)}]});let rows='<tr><th>月份</th><th>收入</th><th>现金收入</th><th>汇款收入</th><th>支出</th><th>剩余</th><th>净利润</th><th>利润率</th></tr>',inc=[],exp=[];for(let i=1;i<=12;i++){let m=y+'-'+String(i).padStart(2,'0'),ml=records.filter(r=>ym(r.date)===m),ss=sums(ml),oo=statObj(ml);inc.push(ss.inc);exp.push(ss.exp);rows+=`<tr><td>${i}月</td><td>${euro(ss.inc)}</td><td>${euro(oo.cashIncome)}</td><td>${euro(oo.transferIncome)}</td><td>${euro(ss.exp)}</td><td>${euro(ss.net)}</td><td>${euro(ss.net)}</td><td>${pct(oo.margin)}</td></tr>`}monthlyTable.innerHTML=rows;chart('monthlyLine','line',{labels:['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],datasets:[{label:'收入',data:inc},{label:'支出',data:exp}]})}
+function renderMonth(){let m=monthSelect.value||today().slice(0,7),list=records.filter(r=>ym(r.date)===m),s=sums(list),o=statObj(list);mIncome.textContent=euro(s.inc);mCashIncome.textContent=euro(o.cashIncome);mTransferIncome.textContent=euro(o.transferIncome);mBankIncome.textContent=euro(o.cardIncome);mExpense.textContent=euro(s.exp);mCashBalance.textContent=euro(o.cashLeft);mTransferBalance.textContent=euro(o.transferLeft);mCardBalance.textContent=euro(o.cardLeft);mLeft.textContent=euro(o.left);mNet.textContent=euro(o.net);mMargin.textContent=pct(o.margin);mNet.className=s.net>=0?'green':'red';mLeft.className=s.net>=0?'green':'red';let em=byCat(list,'支出'),im=byCat(list,'收入');monthExpenseList.innerHTML=Object.entries(em).map(([k,v])=>`<p>${k}：<b class="red">${euro(v)}</b></p>`).join('')||'<p class="small">还没有分类</p>';monthIncomeList.innerHTML=Object.entries(im).map(([k,v])=>`<p>${k}：<b class="green">${euro(v)}</b></p>`).join('')||'<p class="small">还没有分类</p>';chart('monthBar','bar',{labels:Object.keys(em),datasets:[{label:'支出',data:Object.values(em)}]});chart('monthIncomePie','doughnut',{labels:Object.keys(im),datasets:[{data:Object.values(im)}]});renderCalendar(m)}
+function renderStats(){let d=statsDate.value||today(),m=statsMonth.value||today().slice(0,7),y=String(statsYear.value||today().slice(0,4));let day=statObj(records.filter(r=>r.date===d)),mon=statObj(records.filter(r=>ym(r.date)===m)),yr=statObj(records.filter(r=>r.date.startsWith(y)));dayLeft.textContent=euro(day.left);dayCashBalance.textContent=euro(day.cashLeft);dayTransferBalance.textContent=euro(day.transferLeft);dayCardBalance.textContent=euro(day.cardLeft);dayProfit.textContent=euro(day.net);dayMargin.textContent=pct(day.margin);dayCashTransfer.textContent=euro(day.cashIncome+day.transferIncome);monthLeft2.textContent=euro(mon.left);monthCashBalance2.textContent=euro(mon.cashLeft);monthTransferBalance2.textContent=euro(mon.transferLeft);monthCardBalance2.textContent=euro(mon.cardLeft);monthProfit2.textContent=euro(mon.net);monthMargin2.textContent=pct(mon.margin);monthCashTransfer.textContent=euro(mon.cashIncome+mon.transferIncome);yearLeft2.textContent=euro(yr.left);yearCashBalance2.textContent=euro(yr.cashLeft);yearTransferBalance2.textContent=euro(yr.transferLeft);yearCardBalance2.textContent=euro(yr.cardLeft);yearProfit2.textContent=euro(yr.net);yearMargin2.textContent=pct(yr.margin);yearCashTransfer.textContent=euro(yr.cashIncome+yr.transferIncome);[dayLeft,dayProfit].forEach(el=>el.className='money '+(day.net>=0?'green':'red'));[monthLeft2,monthProfit2].forEach(el=>el.className='money '+(mon.net>=0?'green':'red'));[yearLeft2,yearProfit2].forEach(el=>el.className='money '+(yr.net>=0?'green':'red'));dayStatsTable.innerHTML=statTable(day,'日统计：'+d);monthStatsTable.innerHTML=statTable(mon,'月统计：'+m);yearStatsTable.innerHTML=statTable(yr,'年统计：'+y)}
+function renderCalendar(m){let parts=m.split('-').map(Number),y=parts[0],mo=parts[1],first=new Date(y,mo-1,1),start=new Date(first);start.setDate(1-((first.getDay()+6)%7));let html=['星期一','星期二','星期三','星期四','星期五','星期六','星期日'].map(d=>`<div class="day"><b>${d}</b></div>`).join('');for(let i=0;i<42;i++){let d=new Date(start);d.setDate(start.getDate()+i);let ds=d.toISOString().slice(0,10),ss=sums(records.filter(r=>r.date===ds));html+=`<div class="day"><div class="date">${d.getDate()}</div><div class="green">收 ${euro(ss.inc)}</div><div class="red">支 ${euro(ss.exp)}</div><div>余 ${euro(ss.net)}</div></div>`}calendar.innerHTML=html}
+function renderFlow(){let q=(search.value||'').toLowerCase(),ft=filterType.value,fm=filterMonth.value,fa=filterAccount.value;let list=[...records].sort((a,b)=>b.date.localeCompare(a.date)).filter(r=>(!ft||r.type===ft)&&(!fa||r.account===fa)&&(!fm||ym(r.date)===fm)&&(!q||(r.note+r.category+normAccount(r.account)).toLowerCase().includes(q)));flowTable.innerHTML='<tr><th>日期</th><th>收支</th><th>类别</th><th>金额</th><th>账户</th><th>备注</th><th>操作</th></tr>'+list.map(r=>`<tr><td>${r.date}</td><td>${r.type}</td><td>${r.category}</td><td class="${r.type==='收入'?'green':'red'}">${euro(r.amount)}</td><td>${normAccount(r.account)}</td><td>${r.note||''}</td><td class="action"><button class="bluebtn" onclick="editRecord('${r.id}')">改</button><button class="redbtn" onclick="delRecord('${r.id}')">删</button></td></tr>`).join('')}
+function renderHelper(){let y=(monthSelect.value||today().slice(0,7)).slice(0,4),months=[...Array(12)].map((_,i)=>y+'-'+String(i+1).padStart(2,'0'));let rows='<tr><th>分类</th>'+months.map(m=>`<th>${m}</th>`).join('')+'<th>汇总</th></tr>';['支出','收入'].forEach(t=>cats(t).forEach(c=>{let total=0;rows+=`<tr><td>${t}-${c.name}</td>`+months.map(m=>{let v=records.filter(r=>ym(r.date)===m&&r.type===t&&r.category===c.name).reduce((a,b)=>a+b.amount,0);total+=v;return`<td>${v.toFixed(2)}</td>`}).join('')+`<td>${total.toFixed(2)}</td></tr>`}));helperTable.innerHTML=rows}
+function exportCSV(){let csv=['日期,收支,类别,金额,账户,备注',...records.map(r=>[r.date,r.type,r.category,r.amount,r.account,r.note].map(x=>`"${String(x).replaceAll('"','""')}"`).join(','))].join('\n');let blob=new Blob(["\ufeff"+csv],{type:'text/csv;charset=utf-8;'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='记账流水.csv';a.click()}
+function backupJSON(){let data={records,categories,backupTime:new Date().toISOString()};let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='记账系统完整备份.json';a.click()}
+function importJSON(e){let f=e.target.files[0];if(!f)return;let reader=new FileReader();reader.onload=function(){try{let data=JSON.parse(reader.result);if(!data.records||!data.categories)throw new Error();records=data.records.map(r=>({...r,account:normAccount(r.account)}));categories=data.categories;save();renderAll();alert('导入成功');}catch(err){alert('导入失败，请确认是系统导出的JSON备份。')}};reader.readAsText(f)}
+function clearAllData(){if(confirm('确定清空全部分类和流水？不可恢复。')){records=[];categories={收入:[],支出:[]};save();renderAll();updateCategoryOptions()}}
+function renderAll(){renderMonthSelect();renderCategoryTags();renderYear();renderMonth();renderFlow();renderHelper();renderStats()}
+date.value=today();filterMonth.value=today().slice(0,7);statsDate.value=today();statsMonth.value=today().slice(0,7);statsYear.value=today().slice(0,4);updateCategoryOptions();renderAll();initCloud();
+</script>
+<script>
+function checkPassword(){
+  const correctPassword = 'Admin2026';
+  const input = document.getElementById('passwordInput').value.trim();
+  if(input === correctPassword){
+    document.getElementById('loginScreen').style.display='none';
+  }else{
+    document.getElementById('loginError').textContent='密码错误，请重新输入';
+  }
+}
+</script>
+
+</body></html>
